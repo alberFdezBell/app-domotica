@@ -298,6 +298,7 @@ class MainActivity : AppCompatActivity() {
         vpnProbeJob = lifecycleScope.launch {
             val startTime = System.currentTimeMillis()
             var isReachable = false
+            var wakeAttempted = false
 
             Log.d(TAG, "Probing Tailscale VPN tunnel reachability for target URL: $targetUrl")
 
@@ -309,6 +310,13 @@ class MainActivity : AppCompatActivity() {
                 if (isReachable) {
                     Log.d(TAG, "Tailscale VPN tunnel established and reachable!")
                     break
+                }
+
+                // If after 1.5 seconds the tunnel is still unreachable, force wake up the Tailscale app process
+                if (!wakeAttempted && System.currentTimeMillis() - startTime >= 1500L) {
+                    wakeAttempted = true
+                    Log.w(TAG, "Tailscale tunnel unreachable after 1.5s — forcing Tailscale app process wakeup")
+                    TailscaleManager.wakeAndConnectVpn(this@MainActivity)
                 }
 
                 delay(VPN_PROBE_INTERVAL_MS)

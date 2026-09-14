@@ -27,6 +27,43 @@ object TailscaleManager {
     }
 
     /**
+     * Forces Tailscale to wake up if Android killed its process due to battery optimization.
+     * Launches Tailscale process in background and re-sends the connect broadcast,
+     * ensuring MainActivity stays on top.
+     */
+    fun wakeAndConnectVpn(context: Context) {
+        try {
+            Log.d(TAG, "Waking up Tailscale application process...")
+            val pm = context.packageManager
+            val launchIntent = pm.getLaunchIntentForPackage(TAILSCALE_PACKAGE)
+
+            if (launchIntent != null) {
+                launchIntent.addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION
+                )
+                context.startActivity(launchIntent)
+
+                // Immediately bring MainActivity back to front
+                if (context is MainActivity) {
+                    val bringSelf = Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    context.startActivity(bringSelf)
+                }
+
+                // Send broadcast intent again to ensure tunnel state connects
+                connectVpn(context)
+            } else {
+                Log.w(TAG, "Tailscale package ($TAILSCALE_PACKAGE) not found on device")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error waking Tailscale app", e)
+        }
+    }
+
+    /**
      * Sends a background broadcast intent to Tailscale app to disconnect the VPN connection.
      */
     fun disconnectVpn(context: Context) {
