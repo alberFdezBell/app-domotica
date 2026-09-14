@@ -1,0 +1,83 @@
+﻿# =============================================
+# Android / Kotlin / Gradle
+# =============================================
+
+# Build output
+build/
+app/build/
+*/build/
+
+# Gradle caches and wrapper internals
+.gradle/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Local SDK paths
+local.properties
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+captures/
+*.hprof
+
+# Kotlin incremental compilation
+**/.kotlinc_incremental
+
+# =============================================
+# ARCHIVOS SENSIBLES — NUNCA SUBIR
+# =============================================
+
+# Keystore de firma (certificado de la app)
+*.keystore
+*.jks
+*.p12
+
+# Credenciales de signing (contraseñas)
+keystore.properties
+signing.properties
+
+# Firebase — contiene API keys reales
+app/google-services.json
+google-services.json
+
+# Google Maps / Places API keys
+app/src/*/res/values/google_maps_api.xml
+
+# Ficheros .env con secretos
+.env
+.env.*
+!.env.example
+
+# Secrets / tokens de cualquier tipo
+secrets.properties
+secrets.xml
+
+# =============================================
+# macOS / Windows / Linux
+# =============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# =============================================
+# VS Code
+# =============================================
+.vscode/
+*.code-workspace
+
+# =============================================
+# Logs y temporales
+# =============================================
+*.log
+*.tmp
+*.temp

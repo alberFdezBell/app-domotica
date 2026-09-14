@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary_blue">#03A9F4</color>
+    <color name="primary_blue_dark">#0288D1</color>
+    <color name="primary_blue_light">#B3E5FC</color>
+    <color name="accent_blue">#009688</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="background_light">#F5F7FA</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="text_primary">#1F2937</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="status_local">#10B981</color>
+    <color name="status_vpn">#3B82F6</color>
+</resources>

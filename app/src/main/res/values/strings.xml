@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Domótica</string>
+    <string name="title_settings">Configuración</string>
+    <string name="label_local_url">Dirección Local:</string>
+    <string name="hint_local_url">http://192.168.0.24:8123</string>
+    <string name="label_vpn_url">Dirección VPN:</string>
+    <string name="hint_vpn_url">http://100.96.82.4:8123</string>
+    <string name="label_local_ssid">Nombre del Wi-Fi Local (SSID):</string>
+    <string name="hint_local_ssid">Livebox6-0F37</string>
+    <string name="label_device_name">Nombre de este Dispositivo (para notificaciones):</string>
+    <string name="hint_device_name">movil_alberto</string>
+
+    <string name="header_gotify_settings">Servidor de Notificaciones Gotify</string>
+    <string name="label_gotify_url">URL Servidor Gotify:</string>
+    <string name="hint_gotify_url">https://gotify.aferbel.es</string>
+    <string name="label_gotify_user">Usuario Gotify:</string>
+    <string name="hint_gotify_user">usuario</string>
+    <string name="label_gotify_pass">Contraseña Gotify:</string>
+    <string name="hint_gotify_pass">contraseña</string>
+
+    <string name="btn_save_and_continue">Guardar y Continuar</string>
+    <string name="error_empty_field">Por favor, complete este campo.</string>
+    <string name="status_connecting_local">Conectando a Red Local (Wi-Fi)</string>
+    <string name="status_connecting_vpn">Conectando a VPN Tailscale...</string>
+    <string name="action_settings">Configuración</string>
+    <string name="action_reload">Recargar</string>
+    <string name="error_webview_title">Sin conexión a Home Assistant</string>
+    <string name="error_webview_msg">No se pudo cargar la dirección seleccionada. Comprueba tu conexión a la red o a Tailscale.</string>
+    <string name="btn_retry">Reintentar</string>
+</resources>
