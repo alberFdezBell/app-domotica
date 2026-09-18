@@ -225,6 +225,74 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Tailscale Settings Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardTailscaleSettings"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cardGotifySettings">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Acceso Remoto Tailscale"
+                    android:textColor="@color/primary_blue_dark"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Inicia sesión o introduce la Auth Key para mantener el acceso remoto persistente para siempre."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <!-- Tailscale Auth Key Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilTailscaleAuthKey"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="Auth Key (tskey-auth-...)">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etTailscaleAuthKey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:singleLine="true" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Tailscale Web Login / Vincular Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTailscaleLogin"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="12dp"
+                    android:text="Iniciar sesión / Vincular Tailscale"
+                    android:textColor="@color/primary_blue"
+                    app:cornerRadius="8dp"
+                    app:strokeColor="@color/primary_blue" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Save Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSave"
@@ -241,7 +309,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cardGotifySettings"
+            app:layout_constraintTop_toBottomOf="@id/cardTailscaleSettings"
             app:layout_constraintVertical_bias="0.0" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

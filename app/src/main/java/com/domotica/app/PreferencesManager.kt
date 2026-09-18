@@ -22,6 +22,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_GOTIFY_PASS = "key_gotify_pass"
         private const val KEY_GOTIFY_TOKEN = "key_gotify_token"
         private const val KEY_LAST_GOTIFY_MSG_ID = "key_last_gotify_msg_id"
+        private const val KEY_TAILSCALE_AUTH_KEY = "key_tailscale_auth_key"
 
         const val DEFAULT_LOCAL_URL = "http://192.168.0.24:8123"
         const val DEFAULT_VPN_URL = "http://100.96.82.4:8123"
@@ -73,6 +74,10 @@ class PreferencesManager(context: Context) {
         get() = prefs.getLong(KEY_LAST_GOTIFY_MSG_ID, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_GOTIFY_MSG_ID, value).apply()
 
+    var tailscaleAuthKey: String
+        get() = prefs.getString(KEY_TAILSCALE_AUTH_KEY, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_TAILSCALE_AUTH_KEY, value.trim()).apply()
+
     fun saveSettings(
         localUrl: String,
         vpnUrl: String,
@@ -80,7 +85,8 @@ class PreferencesManager(context: Context) {
         deviceName: String,
         gotifyUrl: String = DEFAULT_GOTIFY_URL,
         gotifyUser: String = "",
-        gotifyPass: String = ""
+        gotifyPass: String = "",
+        tailscaleAuthKey: String = ""
     ) {
         prefs.edit()
             .putString(KEY_LOCAL_URL, localUrl.trim())
@@ -90,6 +96,7 @@ class PreferencesManager(context: Context) {
             .putString(KEY_GOTIFY_URL, cleanUrl(gotifyUrl))
             .putString(KEY_GOTIFY_USER, gotifyUser.trim())
             .putString(KEY_GOTIFY_PASS, gotifyPass)
+            .putString(KEY_TAILSCALE_AUTH_KEY, tailscaleAuthKey.trim())
             .putBoolean(KEY_FIRST_RUN, false)
             .apply()
     }

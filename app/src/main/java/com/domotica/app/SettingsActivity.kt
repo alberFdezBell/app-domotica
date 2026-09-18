@@ -24,6 +24,10 @@ class SettingsActivity : AppCompatActivity() {
 
         loadExistingSettings()
 
+        binding.btnTailscaleLogin.setOnClickListener {
+            handleTailscaleLogin()
+        }
+
         binding.btnSave.setOnClickListener {
             saveAndProceed()
         }
@@ -38,6 +42,18 @@ class SettingsActivity : AppCompatActivity() {
         binding.etGotifyUrl.setText(prefsManager.gotifyUrl)
         binding.etGotifyUser.setText(prefsManager.gotifyUsername)
         binding.etGotifyPass.setText(prefsManager.gotifyPassword)
+        binding.etTailscaleAuthKey.setText(prefsManager.tailscaleAuthKey)
+    }
+
+    private fun handleTailscaleLogin() {
+        val authKey = binding.etTailscaleAuthKey.text.toString().trim()
+        if (authKey.isNotBlank()) {
+            TailscaleEmbeddedEngine.registerAuthKey(this, authKey)
+            Toast.makeText(this, "Tailscale vinculado con la Auth Key ingresada", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Abriendo página de Tailscale para obtener clave o iniciar sesión...", Toast.LENGTH_LONG).show()
+            TailscaleEmbeddedEngine.openWebLogin(this)
+        }
     }
 
     private fun saveAndProceed() {
@@ -101,6 +117,8 @@ class SettingsActivity : AppCompatActivity() {
                 }
             }
 
+            val tailscaleAuthKey = binding.etTailscaleAuthKey.text.toString().trim()
+
             prefsManager.saveSettings(
                 localUrl = localUrl,
                 vpnUrl = vpnUrl,
@@ -108,7 +126,8 @@ class SettingsActivity : AppCompatActivity() {
                 deviceName = deviceName,
                 gotifyUrl = gotifyUrl,
                 gotifyUser = gotifyUser,
-                gotifyPass = gotifyPass
+                gotifyPass = gotifyPass,
+                tailscaleAuthKey = tailscaleAuthKey
             )
 
             // Start Gotify notification service if client token is present
