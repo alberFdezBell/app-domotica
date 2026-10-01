@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -44,10 +45,30 @@ class MainActivity : AppCompatActivity() {
     private var isCurrentlyLocalWifi: Boolean? = null
     private var vpnProbeJob: Job? = null
 
+    // Pending URL to load once VPN consent is granted
+    private var pendingVpnUrl: String? = null
+
     companion object {
         private const val TAG = "MainActivity"
-        private const val VPN_PROBE_TIMEOUT_MS = 20000L // Maximum 20 seconds waiting for VPN tunnel
+        private const val VPN_PROBE_TIMEOUT_MS = 25000L // Maximum 25 seconds waiting for VPN tunnel
         private const val VPN_PROBE_INTERVAL_MS = 500L  // Check every 500ms
+    }
+
+    // Launcher for Android VPN consent dialog (required before creating a VPN tunnel)
+    private val vpnConsentLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            Log.d(TAG, "VPN consent granted by user — starting WireGuard tunnel")
+            val url = pendingVpnUrl ?: prefsManager.localUrl
+            WireGuardManager.connectVpn(this)
+            awaitVpnTunnelAndLoad(url)
+        } else {
+            Log.w(TAG, "VPN consent denied by user")
+            binding.vpnLoadingContainer.visibility = View.GONE
+            binding.errorContainer.visibility = View.VISIBLE
+            binding.tvErrorDetails.text = "El usuario rechazó el permiso de VPN. El acceso remoto no está disponible."
+        }
     }
 
     // Permission Launcher for Location, Wi-Fi, and Notifications
@@ -268,7 +289,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleNetworkStateChange(isLocalWifi: Boolean) {
-        val targetUrl = if (isLocalWifi) prefsManager.localUrl else prefsManager.vpnUrl
+        val targetUrl = prefsManager.localUrl
 
         if (isCurrentlyLocalWifi == isLocalWifi && activeTargetUrl == targetUrl) {
             return
@@ -280,14 +301,26 @@ class MainActivity : AppCompatActivity() {
         vpnProbeJob?.cancel()
 
         if (isLocalWifi) {
-            // Local Wi-Fi connected -> Disconnect VPN & load local URL immediately
-            TailscaleManager.disconnectVpn(this)
+            // Local Wi-Fi connected -> Disconnect WireGuard VPN & load local URL directly
+            WireGuardManager.disconnectVpn(this)
             binding.vpnLoadingContainer.visibility = View.GONE
             binding.webView.loadUrl(targetUrl)
         } else {
-            // VPN mode -> Broadcast CONNECT_VPN and wait until Tailscale tunnel is reachable
-            TailscaleManager.connectVpn(this)
-            awaitVpnTunnelAndLoad(targetUrl)
+            // Mobile Data / External network -> request VPN consent if needed, then connect WireGuard
+            pendingVpnUrl = targetUrl
+            val vpnIntent = VpnService.prepare(this)
+            if (vpnIntent != null) {
+                // Android requires the user to grant VPN permission once
+                Log.d(TAG, "Requesting VPN user consent via system dialog...")
+                binding.vpnLoadingContainer.visibility = View.VISIBLE
+                binding.errorContainer.visibility = View.GONE
+                vpnConsentLauncher.launch(vpnIntent)
+            } else {
+                // VPN already authorized — connect directly
+                Log.d(TAG, "VPN already authorized. Connecting embedded WireGuard tunnel...")
+                WireGuardManager.connectVpn(this)
+                awaitVpnTunnelAndLoad(targetUrl)
+            }
         }
     }
 
@@ -300,7 +333,7 @@ class MainActivity : AppCompatActivity() {
             var isReachable = false
             var wakeAttempted = false
 
-            Log.d(TAG, "Probing Tailscale VPN tunnel reachability for target URL: $targetUrl")
+            Log.d(TAG, "Probing WireGuard VPN tunnel reachability for Home Assistant target: $targetUrl")
 
             while (System.currentTimeMillis() - startTime < VPN_PROBE_TIMEOUT_MS) {
                 isReachable = withContext(Dispatchers.IO) {
@@ -308,15 +341,15 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if (isReachable) {
-                    Log.d(TAG, "Tailscale VPN tunnel established and reachable!")
+                    Log.d(TAG, "WireGuard VPN tunnel established and target is reachable!")
                     break
                 }
 
-                // If after 1.5 seconds the tunnel is still unreachable, force wake up the Tailscale app process
+                // If after 1.5 seconds the tunnel is still unreachable, re-verify WireGuard tunnel
                 if (!wakeAttempted && System.currentTimeMillis() - startTime >= 1500L) {
                     wakeAttempted = true
-                    Log.w(TAG, "Tailscale tunnel unreachable after 1.5s — forcing Tailscale app process wakeup")
-                    TailscaleManager.wakeAndConnectVpn(this@MainActivity)
+                    Log.w(TAG, "WireGuard tunnel unreachable after 1.5s — verifying WireGuard engine state")
+                    WireGuardManager.wakeAndConnectVpn(this@MainActivity)
                 }
 
                 delay(VPN_PROBE_INTERVAL_MS)
@@ -327,9 +360,17 @@ class MainActivity : AppCompatActivity() {
             if (isReachable) {
                 binding.webView.loadUrl(targetUrl)
             } else {
-                Log.e(TAG, "Tailscale VPN tunnel reachability probe timed out")
+                Log.e(TAG, "WireGuard VPN tunnel reachability probe timed out")
                 binding.errorContainer.visibility = View.VISIBLE
-                binding.tvErrorDetails.text = getString(R.string.error_webview_msg) + "\nNo se pudo establecer el túnel VPN a tiempo."
+
+                val hasWgConfig = WireGuardManager.hasConfig(this@MainActivity)
+                val hintMsg = if (!hasWgConfig) {
+                    "\n\n💡 Sugerencia para conectar fuera de casa:\nAbre Ajustes y escanea el código QR de tu servidor Wg-Easy."
+                } else {
+                    "\n\n💡 Comprueba que tu servidor Wg-Easy y la IP ($targetUrl) estén activos."
+                }
+
+                binding.tvErrorDetails.text = getString(R.string.error_webview_msg) + "\nNo se pudo establecer el túnel WireGuard a tiempo." + hintMsg
             }
         }
     }
@@ -372,6 +413,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         vpnProbeJob?.cancel()
-        TailscaleManager.disconnectVpn(this)
+        WireGuardManager.disconnectVpn(this)
     }
 }

@@ -63,7 +63,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:gravity="center"
-            android:text="Estableciendo túnel Tailscale VPN..."
+            android:text="@string/status_connecting_vpn"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />

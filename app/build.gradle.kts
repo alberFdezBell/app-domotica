@@ -9,12 +9,19 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
-// Lee las credenciales del keystore desde keystore.properties (no versionado en Git)
+// Lee las credenciales del keystore desde keystore.properties (no versionado en Git) o variables de entorno
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
+
+val keystorePath = keystoreProperties["KEYSTORE_FILE"] as String? ?: System.getenv("KEYSTORE_FILE") ?: "app/release.keystore"
+val keystorePass = keystoreProperties["KEYSTORE_PASSWORD"] as String? ?: System.getenv("KEYSTORE_PASSWORD")
+val keyAliasName = keystoreProperties["KEY_ALIAS"] as String? ?: System.getenv("KEY_ALIAS")
+val keyPass = keystoreProperties["KEY_PASSWORD"] as String? ?: System.getenv("KEY_PASSWORD")
+
+val isSigningConfigured = !keystorePass.isNullOrBlank() && !keyAliasName.isNullOrBlank()
 
 android {
     namespace = "com.domotica.app"
@@ -32,27 +39,26 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = rootProject.file(keystoreProperties["KEYSTORE_FILE"] as String? ?: "app/release.keystore")
-            storePassword = keystoreProperties["KEYSTORE_PASSWORD"] as String?
-                ?: System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = keystoreProperties["KEY_ALIAS"] as String?
-                ?: System.getenv("KEY_ALIAS")
-            keyPassword = keystoreProperties["KEY_PASSWORD"] as String?
-                ?: System.getenv("KEY_PASSWORD")
+            storeFile = rootProject.file(keystorePath)
+            storePassword = keystorePass
+            keyAlias = keyAliasName
+            keyPassword = keyPass
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (isSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            // Firma estándar de depuración por defecto
         }
     }
     compileOptions {
@@ -81,4 +87,11 @@ dependencies {
     // Firebase Cloud Messaging (FCM)
     implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
     implementation("com.google.firebase:firebase-messaging-ktx")
+
+    // WireGuard Android Tunnel SDK
+    implementation("com.wireguard.android:tunnel:1.0.20230706")
+
+    // QR Code Scanning (ZXing Embedded)
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("com.google.zxing:core:3.5.3")
 }

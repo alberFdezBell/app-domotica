@@ -6,6 +6,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.domotica.app.databinding.ActivitySettingsBinding
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -14,6 +16,18 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var prefsManager: PreferencesManager
+
+    // QR Code scanner launcher for WireGuard Wg-Easy QR codes
+    private val qrScanLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents != null) {
+            val qrText = result.contents
+            binding.etWireGuardConfig.setText(qrText)
+            binding.tvWireGuardStatus.text = "✅ Configuración WireGuard cargada desde QR"
+            Toast.makeText(this, "¡Código QR de WireGuard escaneado con éxito!", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Escaneo de QR cancelado", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,13 +38,25 @@ class SettingsActivity : AppCompatActivity() {
 
         loadExistingSettings()
 
-        binding.btnTailscaleLogin.setOnClickListener {
-            handleTailscaleLogin()
+        binding.btnScanQr.setOnClickListener {
+            startQrScanner()
         }
 
         binding.btnSave.setOnClickListener {
             saveAndProceed()
         }
+    }
+
+    private fun startQrScanner() {
+        val options = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            setPrompt("Escanea el código QR de WireGuard (Wg-Easy)")
+            setCameraId(0)
+            setBeepEnabled(true)
+            setBarcodeImageEnabled(false)
+            setOrientationLocked(false)
+        }
+        qrScanLauncher.launch(options)
     }
 
     private fun loadExistingSettings() {
@@ -42,42 +68,31 @@ class SettingsActivity : AppCompatActivity() {
         binding.etGotifyUrl.setText(prefsManager.gotifyUrl)
         binding.etGotifyUser.setText(prefsManager.gotifyUsername)
         binding.etGotifyPass.setText(prefsManager.gotifyPassword)
-        binding.etTailscaleAuthKey.setText(prefsManager.tailscaleAuthKey)
-    }
 
-    private fun handleTailscaleLogin() {
-        val authKey = binding.etTailscaleAuthKey.text.toString().trim()
-        if (authKey.isNotBlank()) {
-            TailscaleEmbeddedEngine.registerAuthKey(this, authKey)
-            Toast.makeText(this, "Tailscale vinculado con la Auth Key ingresada", Toast.LENGTH_SHORT).show()
+        val currentWgConfig = prefsManager.wireguardConfig
+        binding.etWireGuardConfig.setText(currentWgConfig)
+        if (currentWgConfig.isNotBlank()) {
+            binding.tvWireGuardStatus.text = "✅ Configuración WireGuard cargada y lista"
         } else {
-            Toast.makeText(this, "Abriendo página de Tailscale para obtener clave o iniciar sesión...", Toast.LENGTH_LONG).show()
-            TailscaleEmbeddedEngine.openWebLogin(this)
+            binding.tvWireGuardStatus.text = "⚠️ Sin configuración WireGuard. Escanea el QR de Wg-Easy."
         }
     }
 
     private fun saveAndProceed() {
         val localUrl = binding.etLocalUrl.text.toString().trim()
-        val vpnUrl = binding.etVpnUrl.text.toString().trim()
         val localSsid = binding.etLocalSsid.text.toString().trim()
         val deviceName = binding.etDeviceName.text.toString().trim()
 
         val gotifyUrl = binding.etGotifyUrl.text.toString().trim()
         val gotifyUser = binding.etGotifyUser.text.toString().trim()
-        val gotifyPass = binding.etGotifyPass.text.toString()
+        val gotifyPass = binding.etGotifyPass.toString()
+        val wireguardConfig = binding.etWireGuardConfig.text.toString().trim()
 
         if (localUrl.isEmpty()) {
             binding.tilLocalUrl.error = getString(R.string.error_empty_field)
             return
         } else {
             binding.tilLocalUrl.error = null
-        }
-
-        if (vpnUrl.isEmpty()) {
-            binding.tilVpnUrl.error = getString(R.string.error_empty_field)
-            return
-        } else {
-            binding.tilVpnUrl.error = null
         }
 
         if (localSsid.isEmpty()) {
@@ -98,7 +113,6 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnSave.text = "Guardando..."
 
         lifecycleScope.launch {
-            // If Gotify user & password are provided, perform authentication to fetch client token
             if (gotifyUrl.isNotBlank() && gotifyUser.isNotBlank() && gotifyPass.isNotBlank()) {
                 val fetchedToken = withContext(Dispatchers.IO) {
                     GotifyClientHelper.authenticateAndGetClientToken(gotifyUrl, gotifyUser, gotifyPass, deviceName)
@@ -117,20 +131,17 @@ class SettingsActivity : AppCompatActivity() {
                 }
             }
 
-            val tailscaleAuthKey = binding.etTailscaleAuthKey.text.toString().trim()
-
             prefsManager.saveSettings(
                 localUrl = localUrl,
-                vpnUrl = vpnUrl,
+                vpnUrl = localUrl,
                 localSsid = localSsid,
                 deviceName = deviceName,
                 gotifyUrl = gotifyUrl,
                 gotifyUser = gotifyUser,
                 gotifyPass = gotifyPass,
-                tailscaleAuthKey = tailscaleAuthKey
+                wireguardConfig = wireguardConfig
             )
 
-            // Start Gotify notification service if client token is present
             if (prefsManager.gotifyClientToken.isNotBlank()) {
                 GotifyNotificationService.startService(this@SettingsActivity)
             }

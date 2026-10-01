@@ -71,7 +71,7 @@
                 android:orientation="vertical"
                 android:padding="20dp">
 
-                <!-- Local URL -->
+                <!-- Home Assistant URL -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilLocalUrl"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -87,14 +87,13 @@
                         android:singleLine="true" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- VPN URL -->
+                <!-- Hidden VPN URL for compatibility -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilVpnUrl"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:hint="@string/label_vpn_url">
+                    android:visibility="gone">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etVpnUrl"
@@ -225,9 +224,9 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Tailscale Settings Card -->
+        <!-- WireGuard Settings Card -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardTailscaleSettings"
+            android:id="@+id/cardWireGuardSettings"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -247,7 +246,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Acceso Remoto Tailscale"
+                    android:text="@string/header_wireguard_settings"
                     android:textColor="@color/primary_blue_dark"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -256,38 +255,53 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Inicia sesión o introduce la Auth Key para mantener el acceso remoto persistente para siempre."
+                    android:text="Escanea el código QR generado en tu servidor de Wg-Easy para activar el acceso remoto transparente."
                     android:textColor="@color/text_secondary"
                     android:textSize="13sp" />
 
-                <!-- Tailscale Auth Key Input -->
+                <!-- Scan QR Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnScanQr"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/btn_scan_qr_code"
+                    android:textColor="@color/white"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/primary_blue"
+                    app:cornerRadius="10dp" />
+
+                <TextView
+                    android:id="@+id/tvWireGuardStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Estado: Sin configuración WireGuard"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:textStyle="italic" />
+
+                <!-- WireGuard Config Text Input (collapsible or editable) -->
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilTailscaleAuthKey"
+                    android:id="@+id/tilWireGuardConfig"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="Auth Key (tskey-auth-...)">
+                    android:hint="Configuración WireGuard (.conf / QR)">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etTailscaleAuthKey"
+                        android:id="@+id/etWireGuardConfig"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:singleLine="true" />
+                        android:gravity="top|start"
+                        android:inputType="textMultiLine"
+                        android:lines="4"
+                        android:maxLines="8"
+                        android:textSize="12sp" />
                 </com.google.android.material.textfield.TextInputLayout>
-
-                <!-- Tailscale Web Login / Vincular Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTailscaleLogin"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:layout_marginTop="12dp"
-                    android:text="Iniciar sesión / Vincular Tailscale"
-                    android:textColor="@color/primary_blue"
-                    app:cornerRadius="8dp"
-                    app:strokeColor="@color/primary_blue" />
 
             </LinearLayout>
 
@@ -309,7 +323,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cardTailscaleSettings"
+            app:layout_constraintTop_toBottomOf="@id/cardWireGuardSettings"
             app:layout_constraintVertical_bias="0.0" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
