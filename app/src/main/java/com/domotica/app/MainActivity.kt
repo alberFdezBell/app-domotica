@@ -10,8 +10,11 @@ import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.provider.Settings
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -47,6 +50,11 @@ class MainActivity : AppCompatActivity() {
 
     // Pending URL to load once VPN consent is granted
     private var pendingVpnUrl: String? = null
+
+    // Secret gesture variables (Hold bottom-left + 3 taps bottom-right)
+    private var isHoldingBottomLeft = false
+    private var bottomRightTapCount = 0
+    private var lastGestureTapTime = 0L
 
     companion object {
         private const val TAG = "MainActivity"
@@ -149,12 +157,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Asks the system to whitelist this app from battery optimization so the
-     * Gotify foreground service is never killed by aggressive OEM battery savers
-     * (Samsung, Xiaomi MIUI, Huawei EMUI, OnePlus, etc.).
-     * Only shown once — Android remembers the user's choice.
-     */
     private fun requestBatteryOptimizationExemption() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val pm = getSystemService(PowerManager::class.java)
@@ -260,9 +262,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupUIListeners() {
-        binding.swipeRefreshLayout.setOnRefreshListener {
-            binding.webView.reload()
-        }
+        // Disable pull-down swipe-to-refresh to prevent accidental page reloads
+        binding.swipeRefreshLayout.isEnabled = false
 
         binding.btnRetry.setOnClickListener {
             binding.errorContainer.visibility = View.GONE
@@ -288,6 +289,83 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    /**
+     * Secret gesture detector: Hold bottom-left corner (x < 35%, y > 65%)
+     * and tap 3 times in the bottom-right corner (x > 65%, y > 65%) to open Settings.
+     */
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        val width = resources.displayMetrics.widthPixels
+        val height = resources.displayMetrics.heightPixels
+
+        if (width > 0 && height > 0) {
+            val pointerCount = ev.pointerCount
+
+            var foundBottomLeft = false
+            for (i in 0 until pointerCount) {
+                val px = ev.getX(i)
+                val py = ev.getY(i)
+                if (px < width * 0.35f && py > height * 0.65f) {
+                    foundBottomLeft = true
+                    break
+                }
+            }
+
+            isHoldingBottomLeft = foundBottomLeft
+
+            val action = ev.actionMasked
+            if (isHoldingBottomLeft && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN)) {
+                val actionIndex = ev.actionIndex
+                val tapX = ev.getX(actionIndex)
+                val tapY = ev.getY(actionIndex)
+
+                if (tapX > width * 0.65f && tapY > height * 0.65f) {
+                    val now = System.currentTimeMillis()
+                    if (now - lastGestureTapTime > 1500) {
+                        bottomRightTapCount = 0
+                    }
+                    lastGestureTapTime = now
+                    bottomRightTapCount++
+
+                    Log.d(TAG, "Secret gesture tap $bottomRightTapCount/3 in bottom-right quadrant")
+
+                    if (bottomRightTapCount >= 3) {
+                        bottomRightTapCount = 0
+                        isHoldingBottomLeft = false
+                        Log.i(TAG, "Secret gesture recognized! Opening SettingsActivity...")
+
+                        vibrateDevice()
+
+                        val intent = Intent(this, SettingsActivity::class.java)
+                        startActivity(intent)
+                        return true
+                    }
+                }
+            }
+
+            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                if (pointerCount <= 1) {
+                    bottomRightTapCount = 0
+                }
+            }
+        }
+
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun vibrateDevice() {
+        try {
+            val vibrator = getSystemService(Vibrator::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(100)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not trigger vibration feedback", e)
+        }
+    }
+
     private fun handleNetworkStateChange(isLocalWifi: Boolean) {
         val targetUrl = prefsManager.localUrl
 
@@ -310,13 +388,11 @@ class MainActivity : AppCompatActivity() {
             pendingVpnUrl = targetUrl
             val vpnIntent = VpnService.prepare(this)
             if (vpnIntent != null) {
-                // Android requires the user to grant VPN permission once
                 Log.d(TAG, "Requesting VPN user consent via system dialog...")
                 binding.vpnLoadingContainer.visibility = View.VISIBLE
                 binding.errorContainer.visibility = View.GONE
                 vpnConsentLauncher.launch(vpnIntent)
             } else {
-                // VPN already authorized — connect directly
                 Log.d(TAG, "VPN already authorized. Connecting embedded WireGuard tunnel...")
                 WireGuardManager.connectVpn(this)
                 awaitVpnTunnelAndLoad(targetUrl)
@@ -345,7 +421,6 @@ class MainActivity : AppCompatActivity() {
                     break
                 }
 
-                // If after 1.5 seconds the tunnel is still unreachable, re-verify WireGuard tunnel
                 if (!wakeAttempted && System.currentTimeMillis() - startTime >= 1500L) {
                     wakeAttempted = true
                     Log.w(TAG, "WireGuard tunnel unreachable after 1.5s — verifying WireGuard engine state")

@@ -52,6 +52,9 @@ class GotifyNotificationService : Service() {
         const val MESSAGE_CHANNEL_ID = "domotica_gotify_messages_channel"
         const val MESSAGE_CHANNEL_NAME = "Notificaciones Gotify"
 
+        private const val GROUP_SERVICE = "com.domotica.app.SERVICE_GROUP"
+        private const val GROUP_MESSAGES = "com.domotica.app.MESSAGES_GROUP"
+
         fun startService(context: Context) {
             val intent = Intent(context, GotifyNotificationService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -97,18 +100,18 @@ class GotifyNotificationService : Service() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Foreground Service Low-Priority Channel
+            // Foreground Service Low-Priority Channel (fixed service status indicator)
             val serviceChannel = NotificationChannel(
                 SERVICE_CHANNEL_ID,
                 "Servicio de Alertas Domótica",
-                NotificationManager.IMPORTANCE_MIN
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Mantiene activa la recepción de notificaciones 24/7"
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(serviceChannel)
 
-            // High-Priority Push Messages Channel
+            // High-Priority Push Messages Channel (individual alert cards)
             val messageChannel = NotificationChannel(
                 MESSAGE_CHANNEL_ID,
                 MESSAGE_CHANNEL_NAME,
@@ -133,7 +136,9 @@ class GotifyNotificationService : Service() {
             .setSmallIcon(R.drawable.ic_house)
             .setContentTitle("Domótica")
             .setContentText("Servicio de notificaciones 24/7 activo")
-            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setGroup(GROUP_SERVICE)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
@@ -160,7 +165,6 @@ class GotifyNotificationService : Service() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.d(TAG, "Gotify WebSocket Connected Successfully!")
                 reconnectAttempts = 0
-                // Fetch any messages that arrived while the app was closed
                 thread { fetchMissedMessages() }
             }
 
@@ -182,10 +186,7 @@ class GotifyNotificationService : Service() {
     }
 
     private fun buildWebSocketUrl(serverUrl: String, token: String): String {
-        var base = serverUrl.trim()
-        if (base.endsWith("/")) {
-            base = base.substring(0, base.length - 1)
-        }
+        var base = serverUrl.trim().trimEnd('/')
         val wsScheme = if (base.startsWith("https://", ignoreCase = true)) {
             "wss://" + base.substring(8)
         } else if (base.startsWith("http://", ignoreCase = true)) {
@@ -206,7 +207,6 @@ class GotifyNotificationService : Service() {
 
             showNotification(title, message, priority)
 
-            // Track highest seen ID so we can fetch missed messages after reconnect
             val prefs = prefsManager ?: return
             if (id > prefs.lastGotifyMessageId) {
                 prefs.lastGotifyMessageId = id
@@ -223,9 +223,11 @@ class GotifyNotificationService : Service() {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
+        val notificationId = (System.currentTimeMillis() % 100000).toInt() + 2000
+
         val pendingIntent = PendingIntent.getActivity(
             this,
-            System.currentTimeMillis().toInt(),
+            notificationId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -234,19 +236,17 @@ class GotifyNotificationService : Service() {
             .setSmallIcon(R.drawable.ic_house)
             .setContentTitle(title)
             .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setGroup(GROUP_MESSAGES)
             .setPriority(if (priority >= 5) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .build()
 
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+        notificationManager.notify(notificationId, notification)
     }
 
-    /**
-     * Called once the WebSocket connects. Fetches any messages that arrived
-     * while the service was stopped (app killed, phone off, etc.) and shows
-     * them as notifications so none are ever lost.
-     */
     private fun fetchMissedMessages() {
         val prefs = prefsManager ?: return
         val serverUrl = prefs.gotifyUrl
@@ -282,7 +282,7 @@ class GotifyNotificationService : Service() {
                 for (i in 0 until messages.length()) {
                     val msg = messages.getJSONObject(i)
                     val id = msg.optLong("id", -1L)
-                    if (id <= sinceId) continue          // already seen
+                    if (id <= sinceId) continue
 
                     val title = msg.optString("title", getString(R.string.app_name))
                     val message = msg.optString("message", "")
@@ -323,11 +323,6 @@ class GotifyNotificationService : Service() {
         }
     }
 
-    /**
-     * Called when the user swipes the app away from the recent-apps list.
-     * Schedules an AlarmManager broadcast 3 seconds later so the service
-     * restarts itself automatically and never misses Gotify notifications.
-     */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         Log.d(TAG, "App removed from recents — scheduling service restart in 3 s")
@@ -339,7 +334,6 @@ class GotifyNotificationService : Service() {
         )
 
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        // setAndAllowWhileIdle works from API 23+ without needing SCHEDULE_EXACT_ALARM permission
         alarmManager.setAndAllowWhileIdle(
             AlarmManager.ELAPSED_REALTIME_WAKEUP,
             SystemClock.elapsedRealtime() + 3_000L,

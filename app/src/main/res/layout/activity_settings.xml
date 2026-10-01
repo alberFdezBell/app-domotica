@@ -120,23 +120,6 @@
                         android:singleLine="true" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Device Name for Notifications -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilDeviceName"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:hint="@string/label_device_name">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etDeviceName"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:singleLine="true" />
-                </com.google.android.material.textfield.TextInputLayout>
-
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
@@ -219,6 +202,28 @@
                         android:inputType="textPassword"
                         android:singleLine="true" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Test Gotify User / Credentials Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTestGotify"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="14dp"
+                    android:text="🔍 Validar Servidor y Usuario Gotify"
+                    android:textColor="@color/primary_blue"
+                    app:cornerRadius="8dp"
+                    app:strokeColor="@color/primary_blue" />
+
+                <TextView
+                    android:id="@+id/tvGotifyStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Estado: Sin probar"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:textStyle="italic" />
 
             </LinearLayout>
 
